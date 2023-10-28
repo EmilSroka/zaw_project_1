@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  mariadb:
+    image: emilsroka_zaw/mariadb
+    ports:
+      - "3306:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: timeline
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+  backed:
+    image: emilsroka_zaw/backend
+    ports:
+      - "8080:80"
+    volumes:
+      - backend_data:/usr/src/myapp
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: mariadb
+      DB_USER: ${DB_USER}
+    restart: on-failure
+
+volumes:
+  mariadb_data:
+  backend_data:
