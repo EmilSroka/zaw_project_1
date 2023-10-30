@@ -41,6 +41,13 @@ class UsersDAO {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    public function getUserByUsername($username) {
+        $sql = "SELECT * FROM users WHERE username = :username";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['username' => $username]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     public function deleteUser($userId) {
         $sql = "DELETE FROM users WHERE user_id = :user_id";
         $stmt = $this->db->prepare($sql);

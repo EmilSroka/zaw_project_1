@@ -22,6 +22,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_HOST: mariadb
       DB_USER: ${DB_USER}
+      TOKEN_KEY: ${TOKEN_KEY}
     restart: on-failure
 
 volumes:
