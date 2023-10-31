@@ -2,6 +2,7 @@
 namespace App\DAO;
 
 use PDO;
+use App\Errors\ValidationError;
 
 class EventsDAO {
     private $db;
@@ -57,28 +58,45 @@ class EventsDAO {
     public function addEvent($data) {
         $errors = $this->validateEventData($data);
         if (!empty($errors)) {
-            throw new \Exception('Validation failed: ' . implode(', ', $errors));
+            throw new ValidationError('Validation failed: ' . implode(', ', $errors));
         }
 
         $sql = "INSERT INTO events (name, start_date, end_date, description, image_url, category_id) 
                 VALUES (:name, :start_date, :end_date, :description, :image_url, :category_id)";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute($data);
+        $stmt->execute([
+            ':name' => $data['name'],
+            ':start_date' => $data['start_date'],
+            ':end_date' => $data['end_date'] ?? null,
+            ':description' => $data['description'] ?? null,
+            ':image_url' => $data['image_url'] ?? null,
+            ':category_id' => $data['category_id'] ?? null
+        ]);    
         return $this->db->lastInsertId();
     }
 
     public function updateEvent($eventId, $data) {
         $errors = $this->validateEventData($data);
         if (!empty($errors)) {
-            throw new \Exception('Validation failed: ' . implode(', ', $errors));
+            throw new ValidationError('Validation failed: ' . implode(', ', $errors));
         }
-
+        if (empty($eventId) || empty($data['event_id']) || $eventId != $data['event_id']) {
+            throw new ValidationError('Event id error: request param and body mismatch or not present)');
+        }
         $data['event_id'] = $eventId;
         $sql = "UPDATE events SET name = :name, start_date = :start_date, end_date = :end_date, 
                 description = :description, image_url = :image_url, category_id = :category_id 
                 WHERE event_id = :event_id";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute($data);
+        $stmt->execute([
+            ':event_id' => $eventId,
+            ':name' => $data['name'],
+            ':start_date' => $data['start_date'],
+            ':end_date' => $data['end_date'] ?? null,
+            ':description' => $data['description'] ?? null,
+            ':image_url' => $data['image_url'] ?? null,
+            ':category_id' => $data['category_id'] ?? null
+        ]);
     }
 
     public function deleteEvent($eventId) {
@@ -90,7 +108,7 @@ class EventsDAO {
     private function validateEventData($data) {
         $errors = [];
     
-        $requiredFields = ['name', 'start_date', 'category_id'];
+        $requiredFields = ['name', 'start_date'];
         foreach ($requiredFields as $field) {
             if (empty($data[$field])) {
                 $errors[] = "$field is required";

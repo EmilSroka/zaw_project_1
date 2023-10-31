@@ -2,6 +2,7 @@
 namespace App\DAO;
 
 use PDO;
+use App\Errors\ValidationError;
 
 class CategoriesDAO {
     private $db;
@@ -13,13 +14,13 @@ class CategoriesDAO {
     public function addCategory($data) {
         $errors = $this->validateCategoryData($data);
         if (!empty($errors)) {
-            throw new \Exception('Validation failed: ' . implode(', ', $errors));
+            throw new ValidationError('Validation failed: ' . implode(', ', $errors));
         }
         $sql = "INSERT INTO categories (name, color_hash) VALUES (:name, :color_hash)";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
-            'name' => $data['name'],
-            'color_hash' => $data['color_hash']
+            'name' => $data['name'] ?? null,
+            'color_hash' => $data['color_hash'] ?? null
         ]);
         return $this->db->lastInsertId();
     }
@@ -27,14 +28,17 @@ class CategoriesDAO {
     public function updateCategory($id, $data) {
         $errors = $this->validateCategoryData($data);
         if (!empty($errors)) {
-            throw new \Exception('Validation failed: ' . implode(', ', $errors));
+            throw new ValidationError('Validation failed: ' . implode(', ', $errors));
+        }
+        if (empty($id) || empty($data['category_id']) || $id != $data['category_id']) {
+            throw new ValidationError('Category id error: request param and body mismatch or not present)');
         }
         $sql = "UPDATE categories SET name = :name, color_hash = :color_hash WHERE category_id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             'id' => $id,
-            'name' => $data['name'],
-            'color_hash' => $data['color_hash']
+            'name' => $data['name'] ?? null,
+            'color_hash' => $data['color_hash'] ?? null
         ]);
     }
 

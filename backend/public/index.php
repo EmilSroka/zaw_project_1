@@ -41,6 +41,14 @@ $container->set('user-dao', function (Container $container) {
     $database = $container->get('database');
     return new UsersDAO($database);
 });
+$container->set('events-dao', function (Container $container) {
+    $database = $container->get('database');
+    return new EventsDAO($database);
+});
+$container->set('categories-dao', function (Container $container) {
+    $database = $container->get('database');
+    return new CategoriesDAO($database);
+});
 $container->set('auth-service', function (Container $container) {
     $userDAO = $container->get('user-dao');
     return new AuthService($userDAO);
@@ -79,14 +87,9 @@ $errorHandler = function ($request, Throwable $exception, bool $displayErrorDeta
 $errorMiddleware->setDefaultErrorHandler($errorHandler);
 
 
-#############
-# Endpoints #
-#############
-
-$app->get('/hello', function (Request $request, Response $response, $args) {
-    $response->getBody()->write("Morning Babe");
-    return $response;
-})->add($authMiddleware);
+##################
+# Auth Endpoints #
+##################
 
 $app->post('/register', function (Request $request, Response $response) use ($container) {
     $auth = $container->get('auth-service');
@@ -125,5 +128,118 @@ $app->post('/login', function (Request $request, Response $response) use ($conta
         return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
     }
 });
+
+
+####################
+# Events Endpoints #
+####################
+
+$app->get('/events', function (Request $request, Response $response, $args) use ($container) {
+    $eventsDAO = $container->get('events-dao');
+    $events = $eventsDAO->listEvents();
+    $response->getBody()->write(json_encode($events));
+    return $response->withHeader('Content-Type', 'application/json');
+})->add($authMiddleware);
+
+$app->get('/events/{eventId}', function (Request $request, Response $response, $args) use ($container) {
+    $eventsDAO = $container->get('events-dao');
+    $event = $eventsDAO->getEvent($args['eventId']);
+    $response->getBody()->write(json_encode($event));
+    return $response->withHeader('Content-Type', 'application/json');
+})->add($authMiddleware);
+
+$app->post('/events', function (Request $request, Response $response, $args) use ($container) {
+    $eventsDAO = $container->get('events-dao');
+    try {
+        $data = json_decode($request->getBody(), true);
+        $eventId = $eventsDAO->addEvent($data);
+        $response->getBody()->write(json_encode(['id' => $eventId]));
+        return $response->withHeader('Content-Type', 'application/json');
+    } catch (ValidationError $e) {
+        $response->getBody()->write(json_encode(['error' => 'Invalid data. Check if `name` and `start_date` are present. Dates should be of format `YYYY-MM-DD`. `category_id` should be an int, other parameters should be of type string.']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    }
+    catch (Exception $e) {
+        $response->getBody()->write(json_encode(['error' => 'Unexpected Error. Try later or with different data. Check also if payload is correct.']));
+        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    }
+})->add($authMiddleware);
+
+$app->put('/events/{eventId}', function (Request $request, Response $response, $args) use ($container) {
+    $eventsDAO = $container->get('events-dao');
+    try {
+        $data = json_decode($request->getBody(), true);
+        $eventsDAO->updateEvent($args['eventId'], $data);
+        $response->getBody()->write(json_encode(['id' => $args['eventId']]));
+        return $response->withHeader('Content-Type', 'application/json');
+    } catch (ValidationError $e) {
+        $response->getBody()->write(json_encode(['error' => 'Invalid data. Check if `name` and `start_date` are present. Dates should be of format `YYYY-MM-DD`. `category_id` and `event_id` should be of type int, other parameters should be of type string. Also check if request param matches body id.']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    } catch (Exception $e) {
+        $response->getBody()->write(json_encode(['error' => 'Unexpected Error. Try later or with different data. Check also if payload is correct.']));
+        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    }
+})->add($authMiddleware);
+
+$app->delete('/events/{eventId}', function (Request $request, Response $response, $args) use ($container) {
+    $eventsDAO = $container->get('events-dao');
+    try {
+        $eventsDAO->deleteEvent($args['eventId']);
+        $response->getBody()->write(json_encode(['id' => $args['eventId']]));
+        return $response->withHeader('Content-Type', 'application/json');
+    } catch (Exception $e) {
+        $response->getBody()->write(json_encode(['error' => 'Unexpected Error. Try later or with different data. Check also if payload is correct.']));
+        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    }
+})->add($authMiddleware);
+
+
+########################
+# Categories Endpoints #
+########################
+
+$app->post('/categories', function (Request $request, Response $response, $args) use ($container) {
+    $categoriesDAO = $container->get('categories-dao');
+    try {
+        $data = json_decode($request->getBody(), true);
+        $categoryId = $categoriesDAO->addCategory($data);
+        $response->getBody()->write(json_encode(['id' => $categoryId]));
+        return $response->withHeader('Content-Type', 'application/json');
+    } catch (ValidationError $e) {
+        $response->getBody()->write(json_encode(['error' => 'Invalid data. Check if `name` and `color_hash` are both present, of type string and shorter then 256 characters.']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    } catch (Exception $e) {
+        $response->getBody()->write(json_encode(['error' => 'Unexpected Error. Try later or with different data. Check also if payload is correct.']));
+        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    }
+})->add($authMiddleware);
+
+$app->put('/categories/{categoryId}', function (Request $request, Response $response, $args) use ($container) {
+    $categoriesDAO = $container->get('categories-dao');
+    try {
+        $data = json_decode($request->getBody(), true);
+        $categoriesDAO->updateCategory($args['categoryId'], $data);
+        $response->getBody()->write(json_encode(['id' => $args['categoryId']]));
+        return $response->withHeader('Content-Type', 'application/json');
+    } catch (ValidationError $e) {
+        $response->getBody()->write(json_encode(['error' => 'Invalid data. Check if `name` and `color_hash` are both present, of type string and shorter then 256 characters. Also check if request param matches body id.']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    } catch (Exception $e) {
+        $response->getBody()->write(json_encode(['error' => 'Unexpected Error. Try later or with different data. Check also if payload is correct.']));
+        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    }
+})->add($authMiddleware);
+
+$app->delete('/categories/{categoryId}', function (Request $request, Response $response, $args) use ($container) {
+    $categoriesDAO = $container->get('categories-dao');
+    try {
+        $categoriesDAO->deleteCategory($args['categoryId']);
+        $response->getBody()->write(json_encode(['id' => $args['categoryId']]));
+        return $response->withHeader('Content-Type', 'application/json');
+    } catch (Exception $e) {
+        $response->getBody()->write(json_encode(['error' => 'Unexpected Error. Try later or with different data. Check also if payload is correct.']));
+        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    }
+})->add($authMiddleware);
 
 $app->run();
