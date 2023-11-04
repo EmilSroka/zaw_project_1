@@ -1,0 +1,38 @@
+input[name="password"] {
+    width: 100%
+}
+
+.p-timeline-event-marker {
+    border: 2px solid rgb(126, 34, 206) !important;
+    border-radius: 50% !important;
+    width: 1rem !important;
+    height: 1rem !important;
+    background-color: #ffffff !important;
+}
+
+.p-card-content {
+    padding: 4px;
+}
+
+.p-inputtext[name="end_date"],
+.p-inputtext[name="start_date"] {
+    width: 120px !important;
+}
+
+.p-inputtext:not(.p-colorpicker-preview):not(.p-inputtext-sm) {
+    width: 100%;
+}
+
+.p-dropdown {
+    display: inline-flex;
+}
+
+@media print {
+    .hide-for-print {
+        display: none;
+    }
+
+    .p-timeline-event-separator {
+        border-color: rgb(126, 34, 206);
+    }
+}

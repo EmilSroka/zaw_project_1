@@ -22,14 +22,13 @@ class UsersDAO {
         return $this->db->lastInsertId();
     }
 
-    public function updateUser($userId, $data) {
+    public function updateUser($data) {
         $errors = $this->validateUserData($data);
         if (!empty($errors)) {
             throw new \Exception('Validation failed: ' . implode(', ', $errors));
         }
 
-        $data['user_id'] = $userId;
-        $sql = "UPDATE users SET username = :username, password_hash = :password_hash WHERE user_id = :user_id";
+        $sql = "UPDATE users SET password_hash = :password_hash WHERE username = :username";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($data);
     }

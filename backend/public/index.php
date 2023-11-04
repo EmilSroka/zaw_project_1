@@ -84,8 +84,17 @@ $errorHandler = function ($request, Throwable $exception, bool $displayErrorDeta
 
     return $response->withStatus($statusCode)->withHeader('Content-Type', 'application/json');
 };
-$errorMiddleware->setDefaultErrorHandler($errorHandler);
-
+// $errorMiddleware->setDefaultErrorHandler($errorHandler);
+$app->options('/{routes:.+}', function ($request, $response, $args) {
+    return $response;
+});
+$app->add(function ($request, $handler) {
+    $response = $handler->handle($request);
+    return $response
+        ->withHeader('Access-Control-Allow-Origin', '*')
+        ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
+        ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+});
 
 ##################
 # Auth Endpoints #
@@ -129,6 +138,24 @@ $app->post('/login', function (Request $request, Response $response) use ($conta
     }
 });
 
+$app->post('/change-password', function (Request $request, Response $response) use ($container) {
+    $auth = $container->get('auth-service');
+    try {
+        $data = json_decode($request->getBody(), true);
+        $auth->changePassword($data);
+        return $response->withHeader('Content-Type', 'application/json');
+    } catch (ValidationError $e) {
+        $response->getBody()->write(json_encode(['error' => 'Invalid data. Check if `username` and `password` are of type string and if both are shorter then 256 characters.']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    } catch (AuthenticationError $e) {
+        $response->getBody()->write(json_encode(['error' => 'Invalid `username` or `password`']));
+        return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+    } catch (Exception $e) {
+        $response->getBody()->write(json_encode(['error' => 'Unexpected Error. Try later or with different data. Check also if payload is correct.']));
+        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    }
+})->add($authMiddleware);
+
 
 ####################
 # Events Endpoints #
@@ -139,14 +166,18 @@ $app->get('/events', function (Request $request, Response $response, $args) use 
     $events = $eventsDAO->listEvents();
     $response->getBody()->write(json_encode($events));
     return $response->withHeader('Content-Type', 'application/json');
-})->add($authMiddleware);
+});
 
 $app->get('/events/{eventId}', function (Request $request, Response $response, $args) use ($container) {
     $eventsDAO = $container->get('events-dao');
     $event = $eventsDAO->getEvent($args['eventId']);
+    if ($event == false) {
+        $response->getBody()->write(json_encode(['error' => 'Event not found.']));
+        return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+    }
     $response->getBody()->write(json_encode($event));
     return $response->withHeader('Content-Type', 'application/json');
-})->add($authMiddleware);
+});
 
 $app->post('/events', function (Request $request, Response $response, $args) use ($container) {
     $eventsDAO = $container->get('events-dao');
@@ -198,6 +229,13 @@ $app->delete('/events/{eventId}', function (Request $request, Response $response
 # Categories Endpoints #
 ########################
 
+$app->get('/categories', function (Request $request, Response $response, $args) use ($container) {
+    $categoriesDAO = $container->get('categories-dao');
+    $categories = $categoriesDAO->listCategories();
+    $response->getBody()->write(json_encode($categories));
+    return $response->withHeader('Content-Type', 'application/json');
+});
+
 $app->post('/categories', function (Request $request, Response $response, $args) use ($container) {
     $categoriesDAO = $container->get('categories-dao');
     try {
@@ -212,7 +250,7 @@ $app->post('/categories', function (Request $request, Response $response, $args)
         $response->getBody()->write(json_encode(['error' => 'Unexpected Error. Try later or with different data. Check also if payload is correct.']));
         return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
     }
-})->add($authMiddleware);
+});
 
 $app->put('/categories/{categoryId}', function (Request $request, Response $response, $args) use ($container) {
     $categoriesDAO = $container->get('categories-dao');
@@ -232,14 +270,14 @@ $app->put('/categories/{categoryId}', function (Request $request, Response $resp
 
 $app->delete('/categories/{categoryId}', function (Request $request, Response $response, $args) use ($container) {
     $categoriesDAO = $container->get('categories-dao');
-    try {
+    // try {
         $categoriesDAO->deleteCategory($args['categoryId']);
         $response->getBody()->write(json_encode(['id' => $args['categoryId']]));
         return $response->withHeader('Content-Type', 'application/json');
-    } catch (Exception $e) {
-        $response->getBody()->write(json_encode(['error' => 'Unexpected Error. Try later or with different data. Check also if payload is correct.']));
-        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
-    }
+    // } catch (Exception $e) {
+    //     $response->getBody()->write(json_encode(['error' => 'Unexpected Error. Try later or with different data. Check also if payload is correct.']));
+    //     return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    // }
 })->add($authMiddleware);
 
 $app->run();

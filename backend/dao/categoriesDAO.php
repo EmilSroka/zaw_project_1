@@ -11,6 +11,11 @@ class CategoriesDAO {
         $this->db = $db;
     }
 
+    public function listCategories() {
+        $stmt = $this->db->query("SELECT * FROM categories");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function addCategory($data) {
         $errors = $this->validateCategoryData($data);
         if (!empty($errors)) {

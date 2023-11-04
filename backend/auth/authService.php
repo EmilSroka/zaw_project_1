@@ -59,6 +59,29 @@ class AuthService {
         return $this->generateToken($user['username']);
     }
 
+    public function changePassword($data) {
+        $errors = $this->validateUserData($data);
+        if (!empty($errors)) {
+            throw new ValidationError('Validation failed: ' . implode(', ', $errors));
+        }
+
+        $passwordHash = password_hash($data['password'], PASSWORD_DEFAULT);
+        if ($passwordHash === false) {
+            throw new \RuntimeException("Failed to hash password");
+        }
+
+        try {
+            $this->userDAO->updateUser([
+                'username' => $data['username'],
+                'password_hash' => $passwordHash
+            ]);
+        } catch (\PDOException $e) {
+            throw new UsernameAlreadyExistsError('User already exists');
+        } catch (\Exception $e) {
+            throw new \RuntimeException("Unknown error");
+        }
+    }
+
     public function isValidToken($token) {
         if (empty($token)) {
             return false;
@@ -70,7 +93,6 @@ class AuthService {
             return false;
         }
     }
-
 
     private function validateUserData($data) {
         $errors = [];

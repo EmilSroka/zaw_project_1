@@ -2,27 +2,32 @@ version: '3'
 
 services:
   mariadb:
-    image: emilsroka_zaw/mariadb
+    image: srokaemil/zaw_mariadb
     ports:
       - "3306:3306"
     environment:
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_ROOT_PASSWORD: mysecretpassword2
       MARIADB_DATABASE: timeline
-      MARIADB_USER: ${DB_USER}
-      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_USER: service_account
+      MARIADB_PASSWORD: mysecretpassword
     volumes:
       - mariadb_data:/var/lib/mysql
   backed:
-    image: emilsroka_zaw/backend
+    image: srokaemil/zaw_backend
     ports:
       - "8080:80"
     volumes:
       - backend_data:/usr/src/myapp
     environment:
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PASSWORD: mysecretpassword
       DB_HOST: mariadb
-      DB_USER: ${DB_USER}
-      TOKEN_KEY: ${TOKEN_KEY}
+      DB_USER: service_account
+      TOKEN_KEY: mysecrettokenkey
+    restart: on-failure
+  frontend:
+    image: srokaemil/zaw_frontend
+    ports:
+      - "3005:3000"
     restart: on-failure
 
 volumes:
